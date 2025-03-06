@@ -1,0 +1,134 @@
+﻿@page "/signup"
+@inject HttpClient HttpClient
+@inject NavigationManager Navigation
+@using MyClasses.Services
+@inject LoginSession LoginSession
+
+<section class="container text-center mt-5">
+    <h1>Create Your Account</h1>
+    <EditForm Model="@signUpRequest" OnValidSubmit="HandleSignUp">
+        <div class="row justify-content-center">
+            <div class="col-6">
+
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="first_name" @bind-Value="signUpRequest.first_name" placeholder="Enter your First name" required />
+                    <label for="first_name">First Name</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="last_name" @bind-Value="signUpRequest.last_name" placeholder="Enter your Last name" required />
+                    <label for="last_name">Last Name</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="username" @bind-Value="signUpRequest.username" placeholder="Enter your username" required />
+                    <label for="username">Username</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="email" @bind-Value="signUpRequest.email" placeholder="Enter your email" required />
+                    <label for="email">Email</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText type="password" class="form-control" id="password" @bind-Value="signUpRequest.password" placeholder="Enter your password" required />
+                    <label for="password">Password</label>
+                </div>
+
+                <button class="btn btn-primary btn-lg" type="submit">Sign Up</button>
+
+            </div>
+        </div>
+    </EditForm>
+</section>
+
+<style>
+    html, body {
+        overflow-y: auto;
+        height: 100%;
+    }
+
+    .container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+</style>
+
+@code {
+    private SignUpRequest signUpRequest = new SignUpRequest();
+    private string? errorMessage;
+
+    private async Task HandleSignUp()
+    {
+        errorMessage = null;
+        var requestUrl = "api/person/register";
+
+        try
+        {
+            var response = await HttpClient.PostAsJsonAsync(requestUrl, signUpRequest);
+            Console.WriteLine($"🔄 API Call Sent to: {requestUrl}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("✅ Sign-up successful! Trying to log in...");
+
+                // 🔥 Immediately try logging in after registration
+                var loginResponse = await HttpClient.PostAsJsonAsync("api/person/login", new
+                {
+                    username = signUpRequest.username,
+                    password = signUpRequest.password
+                });
+
+                if (loginResponse.IsSuccessStatusCode)
+                {
+                    var userInfo = await loginResponse.Content.ReadFromJsonAsync<UserInfoModel>();
+                    if (userInfo != null)
+                    {
+                        Console.WriteLine($"✅ Login successful! Redirecting to /profile for {userInfo.first_name}");
+
+                        LoginSession.SetLoginDetails(
+                            userInfo.user_id,
+                            userInfo.first_name,
+                            userInfo.email,
+                            userInfo.role
+                        );
+
+                        Navigation.NavigateTo("/profile", forceLoad: true);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("⚠️ Login after signup failed. Redirecting to login page.");
+                    Navigation.NavigateTo("/login");
+                }
+            }
+            else
+            {
+                errorMessage = $"❌ Sign-up failed: {response.StatusCode}";
+                Console.WriteLine(errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"🔥 ERROR: {ex.Message}");
+            errorMessage = "An error occurred during sign-up.";
+        }
+    }
+
+    public class SignUpRequest
+    {
+        public string first_name { get; set; } = string.Empty;
+        public string last_name { get; set; } = string.Empty;
+        public string username { get; set; } = string.Empty;
+        public string email { get; set; } = string.Empty;
+        public string password { get; set; } = string.Empty;
+    }
+
+    public class UserInfoModel
+    {
+        public int user_id { get; set; }
+        public string first_name { get; set; } = string.Empty;
+        public string email { get; set; } = string.Empty;
+        public string role { get; set; } = string.Empty;
+    }
+}

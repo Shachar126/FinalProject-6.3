@@ -1,0 +1,66 @@
+﻿@page "/create-card"
+@inject IJSRuntime JSRuntime
+@inject HttpClient HttpClient
+@inject NavigationManager Navigation
+
+<h3>Create Your Profile Card</h3>
+
+<div class="card p-4">
+    <div class="mb-3">
+        <label for="bio" class="form-label">Bio (Optional):</label>
+        <textarea id="bio" class="form-control" @bind="cardBio"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="games" class="form-label">Games (Required):</label>
+        <input id="games" class="form-control" @bind="cardGames" />
+    </div>
+
+    <div class="mb-3">
+        <label for="pictureUrl" class="form-label">Picture URL (Optional):</label>
+        <input id="pictureUrl" type="text" class="form-control" @bind="cardPictureUrl" />
+    </div>
+
+    <button class="btn btn-outline-success" @onclick="SubmitCard">Create Card</button>
+</div>
+
+@code {
+    private string cardBio = string.Empty;
+    private string cardGames = string.Empty;
+    private string cardPictureUrl = string.Empty;
+
+    private async Task SubmitCard()
+    {
+        var username = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "username");
+        if (string.IsNullOrEmpty(username))
+        {
+            Console.WriteLine("User not logged in.");
+            return;
+        }
+
+        var response = await HttpClient.PostAsJsonAsync("api/profile-searching/create-card", new MyClasses.User_cards
+            {
+                user_id = await GetUserIdByUsername(username),
+                bio = cardBio,
+                games = cardGames,
+                picture_url = cardPictureUrl
+            });
+
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("Card created successfully.");
+            Navigation.NavigateTo("/profile");
+        }
+        else
+        {
+            Console.WriteLine($"Failed to create card: {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+
+    private async Task<int> GetUserIdByUsername(string username)
+    {
+        var response = await HttpClient.PostAsJsonAsync("api/person/getUserByUsername", new { username });
+        var person = await response.Content.ReadFromJsonAsync<MyClasses.Person>();
+        return person?.user_id ?? 0;
+    }
+}

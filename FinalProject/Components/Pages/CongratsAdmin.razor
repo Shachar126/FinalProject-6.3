@@ -1,0 +1,63 @@
+﻿@page "/admin-dashboard"
+@inject NavigationManager Navigation
+@inject MyClasses.Services.LoginSession LoginSession
+
+@if (!isPageLoaded)
+{
+    <p>Loading...</p>
+}
+else
+{
+    @if (!isAdmin)
+    {
+        <div class="alert alert-danger text-center mt-5" role="alert">
+            ❌ You do not have permission to access this page. <br />
+            Redirecting to the homepage in <strong>@countdown</strong> seconds...
+        </div>
+    }
+    else
+    {
+        <div class="text-center mt-5">
+            <h1>Hey! Welcome, congratulations you are an Admin 🎉</h1>
+            <p>Manage your platform efficiently.</p>
+        </div>
+    }
+}
+
+@code {
+    private bool isAdmin;
+    private bool isPageLoaded = false;
+    private int countdown = 5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Mark page as loaded immediately
+        isPageLoaded = true;
+        StateHasChanged();  // 🔥 Ensures the UI updates right away
+
+        // Wait a tiny delay to ensure UI renders properly
+        await Task.Delay(200);
+
+        // Check if the logged-in user is an Admin
+        isAdmin = LoginSession.role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+
+        // If not an admin, start the countdown immediately
+        if (!isAdmin)
+        {
+            _ = StartCountdown(); // Runs in background without blocking UI
+        }
+    }
+
+    private async Task StartCountdown()
+    {
+        for (int i = countdown; i > 0; i--)
+        {
+            await Task.Delay(1000);
+            countdown--;
+            StateHasChanged();  // 🔥 Forces UI update for countdown
+        }
+
+        // 🔥 Navigate safely once countdown reaches 0
+        Navigation.NavigateTo("/");
+    }
+}

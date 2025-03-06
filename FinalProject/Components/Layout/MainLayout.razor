@@ -1,0 +1,153 @@
+﻿@inherits LayoutComponentBase
+@inject MyClasses.Services.LoginSession LoginSession
+@inject NavigationManager NavigationManager
+
+<!-- Reference the app.css and add global styles for full-screen layout -->
+<link href="/css/app.css" rel="stylesheet">
+
+<style>
+    /* Full-screen layout */
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Top Navigation Bar */
+    .custom-navbar {
+        background-color: #000000; /* Black */
+        padding: 15px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100vw;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Navigation Links */
+    .navbar-nav .nav-link {
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        margin: 0 15px;
+    }
+
+    /* User Info (Aligned to Right) */
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
+    }
+
+    /* Website Title (Aligned to Left) */
+    .site-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+    }
+
+    /* Page content margin to avoid hiding under navbar */
+    .main-content {
+        margin-top: 80px;
+        padding: 20px;
+    }
+
+    /* Footer */
+    .custom-footer {
+        background-color: #E0E0E0;
+        text-align: center;
+        padding: 10px;
+        font-size: 14px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0px -4px 8px rgba(0, 0, 0, 0.15);
+    }
+</style>
+
+<!-- Full Page Layout -->
+<div class="d-flex flex-column min-vh-100">
+
+    <!-- Top Navigation Bar -->
+    <nav class="custom-navbar">
+        <!-- Left: Website Title -->
+        <div>
+            <a class="site-title" href="/">Welcome Gamer</a>
+        </div>
+
+        <!-- Center: Navigation Menu -->
+        <div>
+            <ul class="navbar-nav d-flex flex-row">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/search">Search</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Right: User Info & Login/Logout Buttons -->
+        <div class="user-info">
+            <span class="navbar-text">
+                @if (LoginSession.IsGuest())
+                {
+                    <text>Welcome, Guest</text>
+                }
+                else
+                {
+                    <text>Hi, @LoginSession.Name </text>
+                }
+            </span>
+
+            @if (LoginSession.IsGuest())
+            {
+                <button class="btn btn-success" @onclick="NavigateToLogin">Login</button>
+            }
+            else
+            {
+                <button class="btn btn-danger" @onclick="HandleLogout">Logout</button>
+            }
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <main class="flex-grow-1 main-content">
+        <div class="container">
+            @Body
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="custom-footer">
+        © 2025 Welcome Gamer - All Rights Reserved
+    </footer>
+</div>
+
+<!-- Custom JavaScript -->
+<script src="js/site.js"></script>
+
+@code {
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    private void HandleLogout()
+    {
+        LoginSession.ClearSession();
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+}

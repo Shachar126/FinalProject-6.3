@@ -1,0 +1,20 @@
+﻿@typeparam TItem
+@using MyClasses
+
+<div class="card" style="width: 18rem; margin: 1rem;">
+    @if (!string.IsNullOrEmpty(card.picture_url))
+    {
+        <img src="@card.picture_url" class="card-img-top" alt="User Image">
+    }
+    <div class="card-body">
+        <h5 class="card-title">@card.first_name</h5>
+        <h6 class="card-subtitle mb-2 text-muted">@card.username</h6>
+        <p class="card-text">@card.bio</p>
+        <p class="card-text"><strong>Games:</strong> @card.games</p>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public User_cards card { get; set; } = new User_cards();
+}

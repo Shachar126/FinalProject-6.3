@@ -1,0 +1,119 @@
+﻿@page "/login"
+@layout Components.Layout.EmptyLayout
+
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@using MyClasses.Services
+@inject LoginSession LoginSession
+
+<div class="d-flex min-vh-100">
+    <!-- Left Side (Branding) -->
+    <div class="d-flex flex-column justify-content-center align-items-center p-5"
+         style="width: 40%; background-color: #000; color: white;">
+        <h1 class="mb-3">Welcome to 4Gamers</h1>
+        <p>Find teammates for your favorite games</p>
+    </div>
+
+    <!-- Right Side (Login Form) -->
+    <div class="d-flex flex-column justify-content-center align-items-center bg-light p-5" style="width: 60%;">
+        <div style="max-width:400px; width:100%;">
+            <h3 class="text-center">Log in to 4Gamers</h3>
+            <form @onsubmit="HandleLogin">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" @bind="loginModel.Username" class="form-control" required />
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" @bind="loginModel.Password" class="form-control" required />
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Log In</button>
+            </form>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3">@errorMessage</div>
+            }
+
+            <div class="text-center mt-3">
+                <a href="/register" class="btn btn-link">Create an Account</a>
+                <a href="/forgot-password" class="btn btn-link">Forgot Password?</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/person/login", loginModel);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var userInfo = await response.Content.ReadFromJsonAsync<UserInfoModel>();
+                if (userInfo != null)
+                {
+                    // Set the login session with the returned details.
+                    LoginSession.SetLoginDetails(
+                        userInfo.user_id,
+                        userInfo.Name,
+                        userInfo.Email,
+                        userInfo.Role
+                    );
+
+                    // Use the required switch statement to determine the redirect URL.
+                    string redirectUrl;
+                    switch (userInfo.Role)
+                    {
+                        case "Admin":
+                            redirectUrl = "/admin-dashboard";
+                            break;
+                        case "User":
+                            redirectUrl = "/profile";
+                            break;
+                        default:
+                            redirectUrl = "/";
+                            break;
+                    }
+                    Navigation.NavigateTo(redirectUrl, forceLoad: true);
+                }
+                else
+                {
+                    errorMessage = "Login failed: Unable to retrieve user details.";
+                }
+            }
+            else
+            {
+                errorMessage = $"Invalid username or password. Server response: {responseContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
+    // This model represents the data returned by the login API.
+    public class UserInfoModel
+    {
+        public int user_id { get; set; }
+        // Combines first_name and last_name
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        // Role is expected to be "User", "Admin", or "Guest"
+        public string Role { get; set; } = string.Empty;
+    }
+}

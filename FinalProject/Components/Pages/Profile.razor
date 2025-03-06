@@ -1,0 +1,141 @@
+﻿@page "/profile"
+@inject IJSRuntime JSRuntime
+@inject HttpClient HttpClient
+@inject NavigationManager Navigation
+@using MyClasses.Services
+@inject LoginSession LoginSession
+
+@using FinalProject.Components.Pages
+@using MyClasses
+
+@if (!isPageLoaded)
+{
+    <p>Loading...</p>
+}
+else if (isGuest)
+{
+    <div class="alert alert-danger text-center" role="alert">
+        Access denied. Redirecting to login in @countdown seconds...
+    </div>
+}
+else
+{
+    <h3>User Profile</h3>
+
+    @if (user != null)
+    {
+        <div>
+            <p><strong>Username:</strong> @user.username</p>
+            <p><strong>Email:</strong> @user.email</p>
+            <p><strong>Name:</strong> @user.first_name @user.last_name</p>
+            <p><strong>Role:</strong> @user.role</p>
+            <p><strong>Created At:</strong> @user.created_at.ToString("yyyy-MM-dd HH:mm:ss")</p>
+        </div>
+
+        @if (userCard != null)
+        {
+            <UserCard TItem="User_cards" card="@(userCard)" />
+        }
+        else
+        {
+            <button @onclick="NavigateToCreateCard" class="btn btn-outline-secondary mt-3">
+                Create your profile card
+            </button>
+        }
+    }
+    else
+    {
+        <p>Loading...</p>
+    }
+}
+
+@code {
+    private Person? user;
+    private User_cards? userCard;
+    private bool isGuest;
+    private bool isPageLoaded = false;
+    private int countdown = 5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Wait for LoginSession to initialize
+        await Task.Delay(500);
+
+        isGuest = LoginSession.IsGuest();
+        isPageLoaded = true;
+        StateHasChanged();
+
+        if (isGuest)
+        {
+            _ = StartCountdown();
+            return;
+        }
+
+        try
+        {
+            var response = await HttpClient.GetAsync($"api/person/getUserById/{LoginSession.user_id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            user = await response.Content.ReadFromJsonAsync<Person>();
+            if (user == null || string.IsNullOrEmpty(user.role))
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            // IMPORTANT: Use first+last name when setting LoginSession, NOT the username!
+            LoginSession.SetLoginDetails(
+                user.user_id,
+                $"{user.first_name} {user.last_name}",
+                user.email,
+                user.role
+            );
+
+            // Optionally load the user's card
+            var cardResponse = await HttpClient.GetAsync($"api/profileSearching/cards/user/{LoginSession.user_id}");
+            if (cardResponse.IsSuccessStatusCode)
+            {
+                userCard = await cardResponse.Content.ReadFromJsonAsync<User_cards>();
+            }
+            else
+            {
+                userCard = null;
+            }
+        }
+        catch (Exception)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private async Task StartCountdown()
+    {
+        while (countdown > 0)
+        {
+            await Task.Delay(1000);
+            countdown--;
+            StateHasChanged();
+        }
+        Navigation.NavigateTo("/login");
+    }
+
+    private void NavigateToCreateCard()
+    {
+        Navigation.NavigateTo("/create-card");
+    }
+
+    public class Person
+    {
+        public int user_id { get; set; }
+        public string username { get; set; } = string.Empty;
+        public string first_name { get; set; } = string.Empty;
+        public string last_name { get; set; } = string.Empty;
+        public string email { get; set; } = string.Empty;
+        public string role { get; set; } = string.Empty;
+        public DateTime created_at { get; set; }
+    }
+}
